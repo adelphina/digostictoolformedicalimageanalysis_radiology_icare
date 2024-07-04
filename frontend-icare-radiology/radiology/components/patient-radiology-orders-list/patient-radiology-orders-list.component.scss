@@ -1,0 +1,57 @@
+// .attended-radiology-order {
+//   background-color: #cce5ff !important;
+//   color: #004085 !important;
+// }
+
+// .no-mouse-event {
+//   pointer-events: none;
+// }
+
+// .order-not-to-attend {
+//   color: #f00;
+// }
+/* Ensure upload container aligns left */
+$primary-color: #007bff; // Example primary color
+.upload-container {
+  margin-top: 1rem;
+  text-align: left; /* Align contents to the left */
+
+  h2 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: $primary-color; /* Primary color */
+  }
+
+  form {
+    margin-bottom: 1rem;
+  }
+
+  .form-group {
+    margin-bottom: 0.5rem;
+  }
+
+  button[type="submit"] {
+    background-color: $primary-color; /* Primary color */
+    color: #ffffff;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    border-radius: 4px; /* Rounded button */
+    transition: background-color 0.3s ease; /* Smooth background color transition */
+
+    &:hover {
+      background-color: darken($primary-color, 10%); /* Darker shade on hover */
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+  }
+
+  .img-preview {
+    max-width: 100%;
+    height: auto;
+    margin-top: 0.5rem;
+  }
+}
