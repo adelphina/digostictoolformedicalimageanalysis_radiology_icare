@@ -1,0 +1,12 @@
+Defaulting to user installation because normal site-packages is not writeable
+Requirement already satisfied: typeguard in /home/edna/.local/lib/python3.10/site-packages (2.11.1)
+Collecting typeguard
+  Using cached typeguard-4.2.1-py3-none-any.whl.metadata (3.7 kB)
+Requirement already satisfied: typing-extensions>=4.10.0 in /home/edna/.local/lib/python3.10/site-packages (from typeguard) (4.11.0)
+Using cached typeguard-4.2.1-py3-none-any.whl (34 kB)
+Installing collected packages: typeguard
+  Attempting uninstall: typeguard
+    Found existing installation: typeguard 2.11.1
+    Uninstalling typeguard-2.11.1:
+      Successfully uninstalled typeguard-2.11.1
+Successfully installed typeguard-4.2.1

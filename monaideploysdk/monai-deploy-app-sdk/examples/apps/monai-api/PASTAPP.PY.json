@@ -1,0 +1,385 @@
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
+import shutil
+from pathlib import Path
+import uuid
+import os
+import logging
+
+from gaussian_operator import GaussianOperator
+from median_operator import MedianOperator
+from sobel_operator import SobelOperator
+
+from monai.deploy.conditions import CountCondition
+from monai.deploy.core import AppContext, Application
+
+# Create FastAPI instance
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to my FastAPI application!"}
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
+# Directory to save uploaded files
+UPLOAD_DIR = "uploads"
+PROCESSED_DIR = "processed"
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(PROCESSED_DIR, exist_ok=True)
+
+# Define the MONAI Application class
+class App(Application):
+    """This is a very basic application."""
+
+    name = "simple_imaging_app"
+    description = "This is a very simple application."
+    version = "0.1.0"
+
+    def compose(self):
+        """Compose method defining application workflow."""
+
+        app_context: AppContext = Application.init_app_context(self.argv)
+        sample_data_path = Path(app_context.input_path)
+        output_data_path = Path(app_context.output_path)
+        logging.info(f"sample_data_path: {sample_data_path}")
+
+        sobel_op = SobelOperator(self, CountCondition(self, 1), input_path=sample_data_path, name="sobel_op")
+        median_op = MedianOperator(self, name="median_op")
+        gaussian_op = GaussianOperator(self, output_folder=output_data_path, name="gaussian_op")
+        
+        self.add_flow(
+            sobel_op,
+            median_op,
+            { ("out1", "in1"), },
+        )
+        self.add_flow(
+            median_op,
+            gaussian_op,
+            { ("out1", "in1"), },
+        )
+        
+    def run(self, input_file_path):
+        input_file_path = Path(input_file_path)  # Convert to Path object
+        self.compose()
+        
+        # Process the image using the composed workflow
+        output_file_path = Path(PROCESSED_DIR) / f"{input_file_path.stem}_processed.png"
+        # Assuming the processed file has the same name in the output directory
+        if not output_file_path.exists():
+            raise HTTPException(status_code=404, detail="Processed image not found")
+        return output_file_path
+
+
+# Instantiate the MONAI Application
+app_instance = App()
+
+# Lifespan events
+def startup_event():
+    try:
+        app_instance.argv = []  # Set arguments as needed
+        app_instance.run()
+    except Exception as e:
+        logging.error(f"Error running the application on startup: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+def shutdown_event():
+    # Clean up or shutdown tasks if needed
+    pass
+
+# Register lifespan event handlers
+async def startup_handler():
+    startup_event()
+
+async def shutdown_handler():
+    shutdown_event()
+
+# API endpoint to process 
+@app.post("/image/")
+async def image(file: UploadFile = File(...)):
+    # Save the uploaded file
+    upload_id = uuid.uuid4().hex
+    input_file_path = Path(UPLOAD_DIR) / f"{upload_id}_{file.filename}"
+    
+    with input_file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Process the image using the MONAI Application
+    output_file_path = app_instance.run(str(input_file_path))
+    
+    # Assuming the processed file has the same name in the output directory
+    output_file_path = Path(PROCESSED_DIR) / f"{input_file_path.stem}_processed.png"
+    
+    if not output_file_path.exists():
+        raise HTTPException(status_code=404, detail="Processed image not found")
+    
+    return FileResponse(output_file_path, media_type="image/png")
+
+
+# Main entry point to run FastAPI server
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=7002)
+
+
+
+
+
+
+
+
+
+24'06 
+    from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+import shutil
+from pathlib import Path
+import uuid
+import os
+import logging
+
+from gaussian_operator import GaussianOperator
+from median_operator import MedianOperator
+from sobel_operator import SobelOperator
+
+from monai.deploy.conditions import CountCondition
+from monai.deploy.core import AppContext, Application
+
+
+# Create FastAPI instance
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to my FastAPI application!"}
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
+# Directory to save uploaded files
+UPLOAD_DIR = "uploads"
+PROCESSED_DIR = "processed"
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(PROCESSED_DIR, exist_ok=True)
+
+# Define the MONAI Application class
+class App(Application):
+    """This is a very basic application."""
+
+    name = "simple_imaging_app"
+    description = "This is a very simple application."
+    version = "0.1.0"
+
+    def compose(self):
+        """Compose method defining application workflow."""
+
+        app_context: AppContext = Application.init_app_context(self.argv)
+        sample_data_path = Path(app_context.input_path)
+        output_data_path = Path(app_context.output_path)
+        logging.info(f"sample_data_path: {sample_data_path}")
+        logging.info(f"output_data_path: {output_data_path}")
+
+        sobel_op = SobelOperator(self, CountCondition(self, 1), input_path=sample_data_path, name="sobel_op")
+        median_op = MedianOperator(self, name="median_op")
+        gaussian_op = GaussianOperator(self, output_folder=output_data_path, name="gaussian_op")
+        
+        self.add_flow(
+            sobel_op,
+            median_op,
+            { ("out1", "in1"), },
+        )
+        self.add_flow(
+            median_op,
+            gaussian_op,
+            { ("out1", "in1"), },
+        )
+
+    def execute(self, input_file_path):
+        input_file_path = Path(input_file_path)  # Convert to Path object
+        app_context: AppContext = Application.init_app_context(["--input_path", str(input_file_path), "--output_path", PROCESSED_DIR])
+        self.compose()
+        
+        # Process the image using the composed workflow
+        output_file_path = Path(PROCESSED_DIR) / f"{input_file_path.stem}_processed.png"
+        # Assuming the processed file has the same name in the output directory
+        if not output_file_path.exists():
+            raise HTTPException(status_code=404, detail="Processed image not found")
+        return output_file_path
+
+
+# Instantiate the MONAI Application
+app_instance = App()
+
+# Lifespan events
+def startup_event():
+    try:
+        app_instance.argv = []  # Set arguments as needed
+    except Exception as e:
+        logging.error(f"Error running the application on startup: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+def shutdown_event():
+    # Clean up or shutdown tasks if needed
+    pass
+
+# Register lifespan event handlers
+async def startup_handler():
+    startup_event()
+
+async def shutdown_handler():
+    shutdown_event()
+
+# API endpoint to process 
+@app.post("/image/")
+async def image(file: UploadFile = File(...)):
+    # Save the uploaded file
+    upload_id = uuid.uuid4().hex
+    input_file_path = Path(UPLOAD_DIR) / f"{upload_id}_{file.filename}"
+    
+    with input_file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Process the image using the MONAI Application
+    output_file_path = app_instance.execute(str(input_file_path))
+    
+    return FileResponse(output_file_path, media_type="image/png")
+
+
+# Main entry point to run FastAPI server
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=7002)
+
+
+
+
+
+
+    from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+import shutil
+from pathlib import Path
+import uuid
+import os
+import logging
+
+from gaussian_operator import GaussianOperator
+from median_operator import MedianOperator
+from sobel_operator import SobelOperator
+
+from monai.deploy.conditions import CountCondition
+from monai.deploy.core import AppContext, Application
+
+
+# Create FastAPI instance
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to my FastAPI application!"}
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
+# Directory to save uploaded files
+UPLOAD_DIR = "uploads"
+PROCESSED_DIR = "processed"
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(PROCESSED_DIR, exist_ok=True)
+
+# Define the MONAI Application class
+class App(Application):
+    """This is a very basic application."""
+
+    name = "simple_imaging_app"
+    description = "This is a very simple application."
+    version = "0.1.0"
+
+    def compose(self):
+        """Compose method defining application workflow."""
+
+        app_context: AppContext = Application.init_app_context(self.argv)
+        sample_data_path = Path(app_context.input_path)
+        output_data_path = Path(app_context.output_path)
+        logging.info(f"sample_data_path: {sample_data_path}")
+
+        sobel_op = SobelOperator(self, CountCondition(self, 1), input_path=sample_data_path, name="sobel_op")
+        median_op = MedianOperator(self, name="median_op")
+        gaussian_op = GaussianOperator(self, output_folder=output_data_path, name="gaussian_op")
+        
+        self.add_flow(
+            sobel_op,
+            median_op,
+            { ("out1", "in1"), },
+        )
+        self.add_flow(
+            median_op,
+            gaussian_op,
+            { ("out1", "in1"), },
+        )
+
+    def execute(self, input_file_path):
+        input_file_path = Path(input_file_path)  # Convert to Path object
+        
+        self.compose()
+        
+        # Process the image using the composed workflow
+        output_file_path = Path(PROCESSED_DIR) / f"{input_file_path.stem}_processed.png"
+        # Assuming the processed file has the same name in the output directory
+        if not output_file_path.exists():
+            raise HTTPException(status_code=404, detail="Processed image not found")
+        return output_file_path
+
+
+# Instantiate the MONAI Application
+app_instance = App()
+
+# Lifespan events
+def startup_event():
+    try:
+        app_instance.argv = [
+            "--input", UPLOAD_DIR,
+            "--output", PROCESSED_DIR,
+            # Add other arguments as needed
+        ] # Set arguments as needed
+    except Exception as e:
+        logging.error(f"Error running the application on startup: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+def shutdown_event():
+    # Clean up or shutdown tasks if needed
+    pass
+
+# Register lifespan event handlers
+async def startup_handler():
+    startup_event()
+
+async def shutdown_handler():
+    shutdown_event()
+
+# API endpoint to process 
+@app.post("/image/")
+async def image(file: UploadFile = File(...)):
+    # Save the uploaded file
+    upload_id = uuid.uuid4().hex
+    input_file_path = Path(UPLOAD_DIR) / f"{upload_id}_{file.filename}"
+    
+    with input_file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Process the image using the MONAI Application
+    output_file_path = app_instance.execute(str(input_file_path))
+    
+    return FileResponse(output_file_path, media_type="image/png")
+
+
+# Main entry point to run FastAPI server
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=7002)
